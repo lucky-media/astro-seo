@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { generateMetadata } from 'virtual:@lucky-media/astro-seo'
+
+// Page-level overrides — title and description come from the CMS defaults
+// unless explicitly set here.
+const metadata = generateMetadata({
+  title: 'Home',
+})
+---
+
+<BaseLayout metadata={metadata}>
+  <h1>Welcome to Acme Corp</h1>
+  <nav>
+    <a href="/blog/hello-world">Blog: Hello World</a>
+    <a href="/blog/new-product-launch">Blog: New Product Launch</a>
+    <a href="/products/1">Product: Widget Pro</a>
+    <a href="/products/2">Product: Super Gadget</a>
+  </nav>
+</BaseLayout>

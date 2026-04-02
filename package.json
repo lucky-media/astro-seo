@@ -1,0 +1,45 @@
+{
+  "name": "@lucky-media/astro-seo",
+  "version": "0.1.0",
+  "description": "Next.js-style generateMetadata for Astro",
+  "license": "MIT",
+  "author": "Lucky Media",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./SEO.astro": "./src/components/SEO.astro",
+    "./internal/defaults": "./dist/defaults.js",
+    "./internal/merge": "./dist/merge.js"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/components"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src test examples",
+    "lint:fix": "oxlint src test examples --fix",
+    "format": "oxfmt src test examples",
+    "format:check": "oxfmt src test examples --check",
+    "prepare": "cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
+  },
+  "peerDependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "astro": "^5.0.0",
+    "oxfmt": "^0.43.0",
+    "oxlint": "^1.58.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

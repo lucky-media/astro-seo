@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { generateMetadata, resolveMetadata } from 'virtual:@lucky-media/astro-seo'
+
+export function getStaticPaths() {
+  return [
+    { params: { id: '1' }, props: { name: 'Widget Pro', image: '/products/widget-pro.png' } },
+    { params: { id: '2' }, props: { name: 'Super Gadget', image: '/products/gadget.png' } },
+  ]
+}
+
+const { name, image } = Astro.props
+
+// Access site-level OG images to extend them — equivalent to Next.js ResolvingMetadata
+const siteResolved = resolveMetadata()
+const parentOgImages = siteResolved.openGraph?.images ?? []
+
+const metadata = generateMetadata({
+  title: name,
+  openGraph: {
+    title: name,
+    images: [{ url: image, alt: name }, ...parentOgImages],
+  },
+})
+---
+<BaseLayout metadata={metadata}>
+  <h1>{name}</h1>
+</BaseLayout>

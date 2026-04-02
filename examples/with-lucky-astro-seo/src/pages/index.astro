@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { generateMetadata } from "virtual:@lucky-media/astro-seo";
+
+const metadata = generateMetadata({
+  title: "Home",
+  description: "Welcome to Lucky Media.",
+});
+---
+
+<BaseLayout metadata={metadata}>
+  <h1>Welcome</h1>
+</BaseLayout>

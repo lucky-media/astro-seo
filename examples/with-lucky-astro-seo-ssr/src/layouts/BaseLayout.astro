@@ -1,0 +1,42 @@
+---
+import { resolveMetadata } from 'virtual:@lucky-media/astro-seo'
+import SEO from '@lucky-media/astro-seo/SEO.astro'
+import type { Metadata } from 'virtual:@lucky-media/astro-seo'
+import { getSeoDefaults } from '../lib/cms.ts'
+
+interface Props {
+  metadata?: Metadata
+}
+
+// Fetch CMS defaults on every request. For high-traffic SSR sites, cache this
+// in Astro.locals via middleware so it is fetched once per request, not once
+// per layout render.
+const cms = await getSeoDefaults()
+
+const cmsDefaults: Metadata = {
+  title: { default: cms.title, template: `%s | ${cms.siteName}` },
+  description: cms.description,
+  openGraph: {
+    siteName: cms.siteName,
+    images: [{ url: cms.ogImage, alt: cms.siteName }],
+  },
+  twitter: {
+    site: cms.twitterHandle,
+  },
+}
+
+// Merge order: baked-in site config → CMS runtime defaults → page metadata
+const resolved = resolveMetadata(Astro.props.metadata, cmsDefaults)
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO metadata={resolved} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

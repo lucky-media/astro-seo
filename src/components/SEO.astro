@@ -1,0 +1,98 @@
+---
+// src/components/SEO.astro
+import type { ResolvedMetadata, Icon } from '../types.ts'
+
+interface Props {
+  metadata: ResolvedMetadata
+}
+const { metadata } = Astro.props
+
+function toIconArray(val: unknown): Icon[] {
+  if (!val) return []
+  return Array.isArray(val) ? (val as Icon[]) : [val as Icon]
+}
+
+const icons = toIconArray(metadata.icons?.icon)
+const appleIcons = toIconArray(metadata.icons?.apple)
+const shortcutIcons = toIconArray(metadata.icons?.shortcut)
+const ogImages = metadata.openGraph?.images ?? []
+const twitterImages = Array.isArray(metadata.twitter?.images)
+  ? (metadata.twitter!.images as { url: string | URL; alt?: string }[])
+  : metadata.twitter?.images
+    ? [metadata.twitter.images as { url: string | URL; alt?: string }]
+    : []
+---
+
+{metadata.title && <title>{metadata.title}</title>}
+{metadata.description && <meta name="description" content={metadata.description} />}
+{metadata.applicationName && <meta name="application-name" content={metadata.applicationName} />}
+{metadata.generator && <meta name="generator" content={metadata.generator} />}
+{metadata.referrer && <meta name="referrer" content={metadata.referrer} />}
+{metadata.creator && <meta name="author" content={metadata.creator} />}
+{metadata.publisher && <meta name="publisher" content={metadata.publisher} />}
+{metadata.category && <meta name="category" content={metadata.category} />}
+{metadata.robots && <meta name="robots" content={metadata.robots} />}
+{metadata.keywords && (
+  <meta name="keywords" content={Array.isArray(metadata.keywords) ? metadata.keywords.join(', ') : metadata.keywords} />
+)}
+{Array.isArray(metadata.authors) && metadata.authors.map((a) =>
+  a.name ? <meta name="author" content={a.name} /> : null
+)}
+
+{metadata.alternates?.canonical && <link rel="canonical" href={String(metadata.alternates.canonical)} />}
+{metadata.alternates?.languages && Object.entries(metadata.alternates.languages).map(([lang, url]) => (
+  <link rel="alternate" hreflang={lang} href={String(url)} />
+))}
+
+{icons.map((i) => <link rel={i.rel ?? 'icon'} href={String(i.url)} type={i.type} sizes={i.sizes} />)}
+{appleIcons.map((i) => <link rel="apple-touch-icon" href={String(i.url)} sizes={i.sizes} />)}
+{shortcutIcons.map((i) => <link rel="shortcut icon" href={String(i.url)} type={i.type} />)}
+{metadata.manifest && <link rel="manifest" href={String(metadata.manifest)} />}
+
+{metadata.openGraph?.title && <meta property="og:title" content={String(metadata.openGraph.title)} />}
+{metadata.openGraph?.description && <meta property="og:description" content={metadata.openGraph.description} />}
+{metadata.openGraph?.type && <meta property="og:type" content={metadata.openGraph.type} />}
+{metadata.openGraph?.url && <meta property="og:url" content={String(metadata.openGraph.url)} />}
+{metadata.openGraph?.siteName && <meta property="og:site_name" content={metadata.openGraph.siteName} />}
+{metadata.openGraph?.locale && <meta property="og:locale" content={metadata.openGraph.locale} />}
+
+{ogImages.map((img) => (
+  <>
+    <meta property="og:image" content={String(img.url)} />
+    {img.alt && <meta property="og:image:alt" content={img.alt} />}
+    {img.width && <meta property="og:image:width" content={String(img.width)} />}
+    {img.height && <meta property="og:image:height" content={String(img.height)} />}
+    {img.type && <meta property="og:image:type" content={img.type} />}
+  </>
+))}
+
+{metadata.twitter?.card && <meta name="twitter:card" content={metadata.twitter.card} />}
+{metadata.twitter?.site && <meta name="twitter:site" content={metadata.twitter.site} />}
+{metadata.twitter?.creator && <meta name="twitter:creator" content={metadata.twitter.creator} />}
+{metadata.twitter?.title && <meta name="twitter:title" content={String(metadata.twitter.title)} />}
+{metadata.twitter?.description && <meta name="twitter:description" content={metadata.twitter.description} />}
+
+{twitterImages.map((img) => (
+  <>
+    <meta name="twitter:image" content={String(img.url)} />
+    {img.alt && <meta name="twitter:image:alt" content={img.alt} />}
+  </>
+))}
+
+{metadata.verification?.google && (
+  Array.isArray(metadata.verification.google)
+    ? metadata.verification.google.map((v) => <meta name="google-site-verification" content={v} />)
+    : <meta name="google-site-verification" content={String(metadata.verification!.google)} />
+)}
+
+{metadata.verification?.yandex && (
+  Array.isArray(metadata.verification.yandex)
+    ? metadata.verification.yandex.map((v) => <meta name="yandex-verification" content={v} />)
+    : <meta name="yandex-verification" content={String(metadata.verification!.yandex)} />
+)}
+
+{metadata.other && Object.entries(metadata.other).map(([name, value]) =>
+  Array.isArray(value)
+    ? value.map((v) => <meta name={name} content={v} />)
+    : <meta name={name} content={value} />
+)}

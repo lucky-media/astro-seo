@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { generateMetadata } from 'virtual:@lucky-media/astro-seo'
+
+export function getStaticPaths() {
+  return [
+    { params: { slug: 'hello-world' }, props: { title: 'Hello World', excerpt: 'First post.' } },
+    { params: { slug: 'design-tips' }, props: { title: 'Design Tips', excerpt: 'Top 10 tips.' } },
+  ]
+}
+
+const { title, excerpt } = Astro.props
+
+const metadata = generateMetadata({
+  title,
+  description: excerpt,
+  openGraph: {
+    type: 'article',
+    title,
+    description: excerpt,
+    images: [{ url: `/og/blog/${Astro.params.slug}.png`, alt: title }],
+  },
+  twitter: {
+    title,
+    description: excerpt,
+    images: [{ url: `/og/blog/${Astro.params.slug}.png`, alt: title }],
+  },
+})
+---
+<BaseLayout metadata={metadata}>
+  <article>
+    <h1>{title}</h1>
+    <p>{excerpt}</p>
+  </article>
+</BaseLayout>

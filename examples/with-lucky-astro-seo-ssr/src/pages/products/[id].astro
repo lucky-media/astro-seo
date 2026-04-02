@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { generateMetadata } from 'virtual:@lucky-media/astro-seo'
+import { getProduct } from '../../lib/cms.ts'
+
+const { id } = Astro.params
+const product = await getProduct(id!)
+
+if (!product) return Astro.redirect('/404')
+
+const metadata = generateMetadata({
+  title: product.name,
+  description: product.description,
+  openGraph: {
+    title: product.name,
+    description: product.description,
+    images: [{ url: product.image, alt: product.name }],
+  },
+})
+---
+
+<BaseLayout metadata={metadata}>
+  <section>
+    <h1>{product.name}</h1>
+    <p>{product.description}</p>
+  </section>
+</BaseLayout>
