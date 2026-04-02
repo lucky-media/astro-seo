@@ -1,6 +1,6 @@
 {
   "name": "@lucky-media/astro-seo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Next.js-style generateMetadata for Astro",
   "license": "MIT",
   "author": "Lucky Media",
@@ -38,6 +38,10 @@
     "tsup": "^8.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucky-media/astro-seo"
   },
   "publishConfig": {
     "access": "public"
