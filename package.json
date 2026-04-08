@@ -29,10 +29,10 @@
     "prepare": "cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
   },
   "peerDependencies": {
-    "astro": "^5.0.0"
+    "astro": "^5.0.0 || ^6.0.0"
   },
   "devDependencies": {
-    "astro": "^5.0.0",
+    "astro": "^6.0.0",
     "oxfmt": "^0.43.0",
     "oxlint": "^1.58.0",
     "tsup": "^8.0.0",
