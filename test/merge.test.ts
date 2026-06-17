@@ -193,4 +193,44 @@ describe('mergeMetadata', () => {
     const result = mergeMetadata(parent, { twitter: { images: [] } })
     expect(result.twitter?.images).toBeUndefined()
   })
+
+  it('falls back to OG images for twitter when no twitter images are set', () => {
+    const child: Metadata = {
+      metadataBase: new URL('https://example.com'),
+      openGraph: { images: [{ url: '/og.png', alt: 'Page OG' }] },
+      twitter: { site: '@lucky' },
+    }
+    const result = mergeMetadata(createDefaultMetadata(), child)
+    expect(result.twitter?.images?.[0]?.url).toBe('https://example.com/og.png')
+    expect(result.twitter?.images?.[0]?.alt).toBe('Page OG')
+  })
+
+  it('sets twitter card to summary_large_image when falling back to OG images', () => {
+    const child: Metadata = {
+      metadataBase: new URL('https://example.com'),
+      openGraph: { images: [{ url: '/og.png' }] },
+      twitter: { site: '@lucky' },
+    }
+    const result = mergeMetadata(createDefaultMetadata(), child)
+    expect(result.twitter?.card).toBe('summary_large_image')
+  })
+
+  it('does not override explicit twitter images with OG images', () => {
+    const child: Metadata = {
+      metadataBase: new URL('https://example.com'),
+      openGraph: { images: [{ url: '/og.png' }] },
+      twitter: { images: [{ url: '/tw.png' }] },
+    }
+    const result = mergeMetadata(createDefaultMetadata(), child)
+    expect(result.twitter?.images?.[0]?.url).toBe('https://example.com/tw.png')
+  })
+
+  it('does not fall back to OG images when twitter is not set', () => {
+    const child: Metadata = {
+      metadataBase: new URL('https://example.com'),
+      openGraph: { images: [{ url: '/og.png' }] },
+    }
+    const result = mergeMetadata(createDefaultMetadata(), child)
+    expect(result.twitter).toBeNull()
+  })
 })

@@ -50,6 +50,24 @@ function mergeTwitter(
 export function mergeMetadata(parent: ResolvedMetadata, child: Metadata): ResolvedMetadata {
   const base = child.metadataBase ?? parent.metadataBase ?? null
 
+  const openGraph =
+    child.openGraph !== undefined
+      ? resolveOpenGraph(mergeOpenGraph(parent.openGraph, child.openGraph), base)
+      : parent.openGraph
+
+  let twitter =
+    child.twitter !== undefined
+      ? resolveTwitter(mergeTwitter(parent.twitter, child.twitter), base)
+      : parent.twitter
+
+  if (twitter && !twitter.images && openGraph?.images?.length) {
+    twitter = {
+      ...twitter,
+      card: 'summary_large_image',
+      images: openGraph.images.map((img) => ({ url: img.url, alt: img.alt })),
+    }
+  }
+
   return {
     metadataBase: base,
     title: child.title != null ? resolveTitle(child.title, parent.titleTemplate) : parent.title,
@@ -74,14 +92,8 @@ export function mergeMetadata(parent: ResolvedMetadata, child: Metadata): Resolv
     icons: child.icons !== undefined ? resolveIcons(child.icons, base) : parent.icons,
     manifest:
       child.manifest !== undefined ? resolveUrl(child.manifest ?? null, base) : parent.manifest,
-    openGraph:
-      child.openGraph !== undefined
-        ? resolveOpenGraph(mergeOpenGraph(parent.openGraph, child.openGraph), base)
-        : parent.openGraph,
-    twitter:
-      child.twitter !== undefined
-        ? resolveTwitter(mergeTwitter(parent.twitter, child.twitter), base)
-        : parent.twitter,
+    openGraph,
+    twitter,
     verification:
       child.verification !== undefined
         ? { ...parent.verification, ...child.verification }
