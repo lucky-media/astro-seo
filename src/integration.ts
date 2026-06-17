@@ -49,7 +49,7 @@ export function defaultSeo(siteConfig: SiteConfig): AstroIntegration {
 
                     cachedModuleCode = `
 import { createDefaultMetadata } from '@lucky-media/astro-seo/internal/defaults'
-import { mergeMetadata } from '@lucky-media/astro-seo/internal/merge'
+import { mergeMetadata, applyTwitterOgFallback } from '@lucky-media/astro-seo/internal/merge'
 
 const siteConfig = ${serialized}
 
@@ -60,7 +60,8 @@ export function generateMetadata(overrides) {
 export function resolveMetadata(pageMetadata, runtimeDefaults) {
   const base = mergeMetadata(createDefaultMetadata(), siteConfig)
   const withRuntime = runtimeDefaults ? mergeMetadata(base, runtimeDefaults) : base
-  return pageMetadata ? mergeMetadata(withRuntime, pageMetadata) : withRuntime
+  const resolved = pageMetadata ? mergeMetadata(withRuntime, pageMetadata) : withRuntime
+  return applyTwitterOgFallback(resolved)
 }
 `
                   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mergeMetadata } from '../src/merge.ts'
+import { mergeMetadata, applyTwitterOgFallback } from '../src/merge.ts'
 import { createDefaultMetadata } from '../src/defaults.ts'
 import type { Metadata, ResolvedMetadata } from '../src/types.ts'
 
@@ -200,7 +200,7 @@ describe('mergeMetadata', () => {
       openGraph: { images: [{ url: '/og.png', alt: 'Page OG' }] },
       twitter: { site: '@lucky' },
     }
-    const result = mergeMetadata(createDefaultMetadata(), child)
+    const result = applyTwitterOgFallback(mergeMetadata(createDefaultMetadata(), child))
     expect(result.twitter?.images?.[0]?.url).toBe('https://example.com/og.png')
     expect(result.twitter?.images?.[0]?.alt).toBe('Page OG')
   })
@@ -211,7 +211,7 @@ describe('mergeMetadata', () => {
       openGraph: { images: [{ url: '/og.png' }] },
       twitter: { site: '@lucky' },
     }
-    const result = mergeMetadata(createDefaultMetadata(), child)
+    const result = applyTwitterOgFallback(mergeMetadata(createDefaultMetadata(), child))
     expect(result.twitter?.card).toBe('summary_large_image')
   })
 
@@ -221,7 +221,7 @@ describe('mergeMetadata', () => {
       openGraph: { images: [{ url: '/og.png' }] },
       twitter: { images: [{ url: '/tw.png' }] },
     }
-    const result = mergeMetadata(createDefaultMetadata(), child)
+    const result = applyTwitterOgFallback(mergeMetadata(createDefaultMetadata(), child))
     expect(result.twitter?.images?.[0]?.url).toBe('https://example.com/tw.png')
   })
 
@@ -232,5 +232,22 @@ describe('mergeMetadata', () => {
     }
     const result = mergeMetadata(createDefaultMetadata(), child)
     expect(result.twitter).toBeNull()
+  })
+
+  it('twitter images match page OG image when siteConfig has global OG and twitter handle but page has its own OG', () => {
+    // Bug: fallback fires during siteConfig merge and locks in the global OG image as
+    // twitter.images, so a later page-level OG image never replaces it.
+    const siteConfig: Metadata = {
+      openGraph: { images: [{ url: 'https://example.com/global.png' }] },
+      twitter: { site: '@lucky' },
+    }
+    const pageMetadata: Metadata = {
+      openGraph: { images: [{ url: 'https://example.com/page.png' }] },
+    }
+
+    const base = mergeMetadata(createDefaultMetadata(), siteConfig)
+    const resolved = applyTwitterOgFallback(mergeMetadata(base, pageMetadata))
+
+    expect(resolved.twitter?.images?.[0]?.url).toBe('https://example.com/page.png')
   })
 })

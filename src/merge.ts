@@ -47,6 +47,20 @@ function mergeTwitter(
   }
 }
 
+export function applyTwitterOgFallback(resolved: ResolvedMetadata): ResolvedMetadata {
+  if (resolved.twitter && !resolved.twitter.images && resolved.openGraph?.images?.length) {
+    return {
+      ...resolved,
+      twitter: {
+        ...resolved.twitter,
+        card: 'summary_large_image',
+        images: resolved.openGraph.images.map((img) => ({ url: img.url, alt: img.alt })),
+      },
+    }
+  }
+  return resolved
+}
+
 export function mergeMetadata(parent: ResolvedMetadata, child: Metadata): ResolvedMetadata {
   const base = child.metadataBase ?? parent.metadataBase ?? null
 
@@ -59,14 +73,6 @@ export function mergeMetadata(parent: ResolvedMetadata, child: Metadata): Resolv
     child.twitter !== undefined
       ? resolveTwitter(mergeTwitter(parent.twitter, child.twitter), base)
       : parent.twitter
-
-  if (twitter && !twitter.images && openGraph?.images?.length) {
-    twitter = {
-      ...twitter,
-      card: 'summary_large_image',
-      images: openGraph.images.map((img) => ({ url: img.url, alt: img.alt })),
-    }
-  }
 
   return {
     metadataBase: base,
