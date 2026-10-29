@@ -1,11 +1,23 @@
 # Publishes the package to npm when a GitHub release is published.
 # Authentication uses npm trusted publishing (OIDC), so no npm token is stored in GitHub.
 # Configure the trusted publisher on npmjs.com with the workflow filename `publish.yml`.
+#
+# Use the manual trigger only to publish a version that has a GitHub release but is not on npm.
+# Run it on a branch that holds that version, for example `release/0.3.0`.
 name: Publish to npm
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (must match package.json on the selected branch)'
+        required: true
+      dist-tag:
+        description: 'npm dist-tag'
+        required: true
+        default: 'latest'
 
 permissions:
   contents: read
@@ -14,6 +26,9 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      EXPECTED_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', inputs.version) }}
+      DIST_TAG: ${{ github.event_name == 'release' && (github.event.release.prerelease && 'next' || 'latest') || inputs.dist-tag }}
     steps:
       - uses: actions/checkout@v6
 
@@ -23,11 +38,11 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
-      - name: Check that the release tag matches package.json
+      - name: Check that the version matches package.json
         run: |
           version="v$(node -p "require('./package.json').version")"
-          if [ "$version" != "${{ github.event.release.tag_name }}" ]; then
-            echo "Release tag ${{ github.event.release.tag_name }} does not match package.json version $version"
+          if [ "$version" != "$EXPECTED_VERSION" ]; then
+            echo "Expected $EXPECTED_VERSION, but package.json has $version"
             exit 1
           fi
 
@@ -39,4 +54,4 @@ jobs:
       - run: npm run build
 
       # A GitHub pre-release publishes to the `next` dist-tag, so `latest` does not change.
-      - run: npm publish --provenance --access public --tag ${{ github.event.release.prerelease && 'next' || 'latest' }}
+      - run: npm publish --provenance --access public --tag "$DIST_TAG"
