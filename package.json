@@ -1,6 +1,6 @@
 {
   "name": "@lucky-media/astro-seo",
-  "version": "0.3.0",
+  "version": "0.3.1-beta.0",
   "description": "Next.js-style generateMetadata for Astro",
   "license": "MIT",
   "author": "Lucky Media",

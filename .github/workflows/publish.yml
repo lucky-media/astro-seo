@@ -38,4 +38,5 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      - run: npm publish --provenance --access public
+      # A GitHub pre-release publishes to the `next` dist-tag, so `latest` does not change.
+      - run: npm publish --provenance --access public --tag ${{ github.event.release.prerelease && 'next' || 'latest' }}
