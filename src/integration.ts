@@ -39,13 +39,13 @@ export function defaultSeo(siteConfig: SiteConfig): AstroIntegration {
                 // Hook filters let Vite 8 (Rolldown) skip these hooks for other ids.
                 // The checks inside each handler keep older Vite versions working.
                 resolveId: {
-                  filter: { id: /^virtual:@lucky-media\/astro-seo$/ },
+                  filter: { id: new RegExp(`^${virtualModuleId}$`) },
                   handler(id: string) {
                     if (id === virtualModuleId) return resolvedId
                   },
                 },
                 load: {
-                  filter: { id: /^\0virtual:@lucky-media\/astro-seo$/ },
+                  filter: { id: new RegExp(`^${resolvedId}$`) },
                   async handler(id: string) {
                     if (id !== resolvedId) return
 
