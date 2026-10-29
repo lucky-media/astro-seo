@@ -1,6 +1,6 @@
 {
   "name": "@lucky-media/astro-seo",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Next.js-style generateMetadata for Astro",
   "license": "MIT",
   "author": "Lucky Media",
@@ -9,7 +9,8 @@
     ".": "./dist/index.js",
     "./SEO.astro": "./src/components/SEO.astro",
     "./internal/defaults": "./dist/defaults.js",
-    "./internal/merge": "./dist/merge.js"
+    "./internal/merge": "./dist/merge.js",
+    "./internal/tags": "./dist/tags.js"
   },
   "types": "./dist/index.d.ts",
   "files": [

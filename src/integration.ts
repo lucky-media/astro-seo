@@ -56,7 +56,7 @@ export function defaultSeo(siteConfig: SiteConfig): AstroIntegration {
 
                       cachedModuleCode = `
 import { createDefaultMetadata } from '@lucky-media/astro-seo/internal/defaults'
-import { mergeMetadata, applyTwitterOgFallback } from '@lucky-media/astro-seo/internal/merge'
+import { mergeMetadata, postProcessMetadata } from '@lucky-media/astro-seo/internal/merge'
 
 const siteConfig = ${serialized}
 
@@ -68,7 +68,7 @@ export function resolveMetadata(pageMetadata, runtimeDefaults) {
   const base = mergeMetadata(createDefaultMetadata(), siteConfig)
   const withRuntime = runtimeDefaults ? mergeMetadata(base, runtimeDefaults) : base
   const resolved = pageMetadata ? mergeMetadata(withRuntime, pageMetadata) : withRuntime
-  return applyTwitterOgFallback(resolved)
+  return postProcessMetadata(resolved)
 }
 `
                     }

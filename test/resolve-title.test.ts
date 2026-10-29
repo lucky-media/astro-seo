@@ -17,6 +17,9 @@ describe('resolveTitle', () => {
   it('returns null for null input', () => {
     expect(resolveTitle(null, null)).toBeNull()
   })
+  it('replaces every %s in the template', () => {
+    expect(resolveTitle('Page', '%s - %s')).toBe('Page - Page')
+  })
 })
 
 describe('extractTitleTemplate', () => {

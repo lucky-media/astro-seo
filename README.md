@@ -17,8 +17,10 @@ Next.js App Router-style `generateMetadata` for Astro. Configure site-level SEO 
 11. [Pattern 7: Icons](#pattern-7-icons)
 12. [Pattern 8: CMS Defaults (SSG, fetch at build time)](#pattern-8-cms-defaults-ssg-fetch-at-build-time)
 13. [Pattern 9: CMS Defaults (SSR, fetch at runtime)](#pattern-9-cms-defaults-ssr-fetch-at-runtime)
-14. [Field Reference Table](#field-reference-table)
-15. [Limitations](#limitations)
+14. [Pattern 10: Article and Other OpenGraph Types](#pattern-10-article-and-other-opengraph-types)
+15. [Pattern 11: Pagination, Viewport and App Metadata](#pattern-11-pagination-viewport-and-app-metadata)
+16. [Field Reference Table](#field-reference-table)
+17. [Limitations](#limitations)
 
 ---
 
@@ -33,6 +35,8 @@ Managing `<head>` metadata in Astro has no built-in convention. Each site ends u
 - **Automatic inheritance**: every page inherits site defaults; child values override parent values
 - **Title templates**: `%s | My Site` applied to every page title automatically
 - **Twitter card auto-detection**: `summary_large_image` when images are present, `summary` otherwise
+- **Automatic social fallbacks**: Twitter fields fill from OpenGraph, and OpenGraph and Twitter titles and descriptions fill from the page title and description
+- **Full Next.js field coverage**: robots and `googleBot`, alternates, icons, all OpenGraph types, Twitter player and app cards, pagination, viewport, theme color, Apple web app, app links and more
 - **A typed `<SEO />` component** that renders every supported `<meta>` and `<link>` tag
 
 If you know Next.js metadata, you already know this API.
@@ -163,9 +167,12 @@ export default defineConfig({
         yandex: 'def456',
       },
 
+      // Browser UI color
+      themeColor: '#ffffff',
+
       // Arbitrary extra meta tags
       other: {
-        'theme-color': '#ffffff',
+        'msapplication-TileColor': '#ffffff',
       },
     }),
   ],
@@ -399,6 +406,34 @@ const metadata = generateMetadata({
 })
 ```
 
+`openGraph.title` and `twitter.title` accept the same forms as the document `title`: a string, `{ default, template }`, or `{ absolute }`. A `template` set on the OpenGraph or Twitter title applies to child OpenGraph or Twitter titles only. The document title template does not apply to them.
+
+`images` accepts a string, a `URL`, a descriptor object, or an array of these:
+
+```astro
+openGraph: { images: '/og.png' }
+openGraph: { images: ['/og-1.png', { url: '/og-2.png', alt: 'Second' }] }
+```
+
+### Automatic fallbacks
+
+`resolveMetadata()` fills empty social fields after it merges all layers. It uses the same rules as Next.js:
+
+1. When `openGraph` is set, empty Twitter fields get the OpenGraph `title`, `description` and `images`. If `twitter` is not set, the resolver creates it.
+2. Empty OpenGraph and Twitter titles and descriptions get the document `title` and `description`.
+
+So this page metadata:
+
+```astro
+const metadata = generateMetadata({
+  title: 'About',
+  description: 'Who we are.',
+  openGraph: { images: '/og/about.png' },
+})
+```
+
+gives `og:title`, `og:description`, `twitter:title`, `twitter:description`, `twitter:image` and `twitter:card="summary_large_image"`.
+
 ### Twitter card auto-detection
 
 You do not need to set `card` explicitly. The resolver infers it:
@@ -406,9 +441,10 @@ You do not need to set `card` explicitly. The resolver infers it:
 | Condition | Resolved `twitter:card` |
 |---|---|
 | `twitter.images` is set | `summary_large_image` |
-| `twitter.images` is not set | `summary` |
+| `twitter.images` is empty, but `openGraph.images` is set | `summary_large_image` (images come from OpenGraph) |
+| No images | `summary` |
 
-To use `player` or `app`, set `card` explicitly.
+The resolver infers the card again on each layer. So a site config with `twitter: { site: '@mysite' }` and a page with images gives `summary_large_image`. If any layer sets `card`, child layers keep that value. To use `player` or `app`, set `card` explicitly.
 
 ---
 
@@ -446,17 +482,26 @@ const metadata = generateMetadata({
 
 If you need to read the site-level resolved metadata directly (for example to combine values), `resolveMetadata()` called with no arguments returns it:
 
+```astro
+---
+import { resolveMetadata } from 'virtual:@lucky-media/astro-seo'
+
+const site = resolveMetadata()
+// site.title, site.openGraph?.siteName, site.twitter?.site, ...
+---
+```
+
 ### Inheritance rules
 
 | Field | Child behaviour |
 |---|---|
 | `title` | Overrides parent; parent template still applied unless `absolute` used |
 | `description` | Replaces parent value when set |
-| `openGraph` | Deep-merged field-by-field; `images` replaced when set, inherited when omitted |
-| `twitter` | Deep-merged field-by-field; `images` replaced when set, inherited when omitted |
+| `openGraph` | Deep-merged field-by-field; `images` replaced when set, inherited when omitted; `title` uses the parent OpenGraph title template |
+| `twitter` | Deep-merged field-by-field; `images` replaced when set, inherited when omitted; `title` uses the parent Twitter title template |
 | `verification` | Shallow-merged: child keys extend parent keys |
 | `other` | Shallow-merged: child keys extend parent keys |
-| All other fields | Child value replaces parent when not `undefined` |
+| All other fields | Child value replaces parent when not `undefined`; `null` clears the parent value |
 
 ---
 
@@ -484,6 +529,25 @@ const metadata = generateMetadata({
   robots: { index: true, follow: true, nocache: true },
   // serializes to "index, follow, nocache"
 })
+```
+
+The object form also accepts `noarchive`, `nosnippet`, `noimageindex`, `notranslate`, `indexifembedded`, `nositelinkssearchbox`, `unavailable_after`, `max-snippet`, `max-image-preview` and `max-video-preview`.
+
+**Google-specific directives:**
+
+```astro
+const metadata = generateMetadata({
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+})
+```
+
+```html
+<meta name="robots" content="index, follow" />
+<meta name="googlebot" content="index, max-image-preview:large, max-snippet:-1" />
 ```
 
 ### Canonical URL
@@ -527,6 +591,24 @@ const metadata = generateMetadata({
 <link rel="alternate" hreflang="fr-FR" href="https://fr.example.com/about" />
 ```
 
+### Media and type alternates (RSS, mobile)
+
+`media` and `types` work like `languages`. Each value is a URL or an array of `{ url, title }` descriptors. `canonical` also accepts a descriptor.
+
+```astro
+const metadata = generateMetadata({
+  alternates: {
+    media: { 'only screen and (max-width: 600px)': '/mobile' },
+    types: { 'application/rss+xml': [{ url: '/rss.xml', title: 'Blog RSS' }] },
+  },
+})
+```
+
+```html
+<link rel="alternate" media="only screen and (max-width: 600px)" href="https://example.com/mobile" />
+<link rel="alternate" type="application/rss+xml" href="https://example.com/rss.xml" title="Blog RSS" />
+```
+
 ---
 
 ## Pattern 7: Icons
@@ -563,6 +645,26 @@ defaultSeo({
       { url: '/apple-touch-icon-120x120.png', sizes: '120x120' },
       { url: '/apple-touch-icon-152x152.png', sizes: '152x152' },
     ],
+  },
+})
+```
+
+### Short forms, dark-mode icons and other link types
+
+A string, a `URL` or an array at the top level is the same as `icons.icon`. Each icon also accepts `media`, `color` and `fetchPriority`. Use `icons.other` for any other `rel`.
+
+```js
+defaultSeo({
+  icons: [
+    { url: '/favicon-light.png', media: '(prefers-color-scheme: light)' },
+    { url: '/favicon-dark.png', media: '(prefers-color-scheme: dark)' },
+  ],
+})
+
+defaultSeo({
+  icons: {
+    icon: '/favicon.ico',
+    other: { rel: 'mask-icon', url: '/safari-pinned-tab.svg', color: '#5bbad5' },
   },
 })
 ```
@@ -662,6 +764,111 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 
 ---
 
+## Pattern 10: Article and Other OpenGraph Types
+
+Set `openGraph.type` to get the type-specific tags. The `<SEO />` component renders a type-specific field only for its type.
+
+```astro
+const metadata = generateMetadata({
+  title: post.title,
+  openGraph: {
+    type: 'article',
+    publishedTime: '2026-01-15T09:00:00Z',
+    modifiedTime: '2026-02-01T12:00:00Z',
+    authors: ['https://example.com/team/jane'],
+    section: 'Engineering',
+    tags: ['astro', 'seo'],
+  },
+})
+```
+
+```html
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-01-15T09:00:00Z" />
+<meta property="article:modified_time" content="2026-02-01T12:00:00Z" />
+<meta property="article:author" content="https://example.com/team/jane" />
+<meta property="article:section" content="Engineering" />
+<meta property="article:tag" content="astro" />
+<meta property="article:tag" content="seo" />
+```
+
+| `type` | Fields |
+|---|---|
+| `article` | `publishedTime`, `modifiedTime`, `expirationTime`, `authors`, `section`, `tags` |
+| `book` | `isbn`, `releaseDate`, `authors`, `tags` |
+| `profile` | `firstName`, `lastName`, `username`, `gender` |
+| `music.song` | `duration`, `albums` (`{ url, disc, track }`), `musicians` |
+| `music.album` | `songs` (`{ url, disc, track }`), `musicians`, `releaseDate` |
+| `music.playlist` | `songs`, `creators` |
+| `music.radio_station` | `creators` |
+| `video.movie` | `actors` (`{ url, role }`), `directors`, `writers`, `duration`, `releaseDate`, `tags` |
+| `video.episode` | Same as `video.movie`, plus `series` |
+| All types | `videos`, `audio`, `determiner`, `emails`, `phoneNumbers`, `faxNumbers`, `countryName`, `ttl` |
+
+---
+
+## Pattern 11: Pagination, Viewport and App Metadata
+
+### Paginated lists
+
+```astro
+const metadata = generateMetadata({
+  pagination: { previous: '/blog/page/1', next: '/blog/page/3' },
+})
+```
+
+```html
+<link rel="prev" href="https://example.com/blog/page/1" />
+<link rel="next" href="https://example.com/blog/page/3" />
+```
+
+### Viewport, theme color and color scheme
+
+```js
+defaultSeo({
+  viewport: { width: 'device-width', initialScale: 1, viewportFit: 'cover' },
+  themeColor: [
+    { color: '#ffffff', media: '(prefers-color-scheme: light)' },
+    { color: '#000000', media: '(prefers-color-scheme: dark)' },
+  ],
+  colorScheme: 'light dark',
+})
+```
+
+If you set `viewport`, remove the `<meta name="viewport">` tag from your layout. If you do not, the page gets two viewport tags.
+
+### Apple, app links and social apps
+
+```js
+defaultSeo({
+  appleWebApp: { title: 'My App', statusBarStyle: 'black-translucent' },
+  formatDetection: { telephone: false },
+  itunes: { appId: '123456789', appArgument: '/open' },
+  appLinks: {
+    ios: { url: 'myapp://home', app_store_id: 123456789 },
+    android: { package: 'com.example.app', app_name: 'My App' },
+  },
+  facebook: { appId: '1234567890' },
+  pinterest: { richPin: true },
+})
+```
+
+### Twitter player and app cards
+
+```astro
+twitter: {
+  card: 'player',
+  players: { playerUrl: '/embed/video', streamUrl: '/video.mp4', width: 640, height: 360 },
+}
+
+twitter: {
+  card: 'app',
+  app: { name: 'My App', id: { iphone: 'id123', googleplay: 'com.example.app' } },
+}
+```
+
+---
+
 ## Field Reference Table
 
 ### Core fields
@@ -674,13 +881,28 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 | `title.absolute` | `title: { absolute: 'Fixed Title' }` | `<title>Fixed Title</title>` (bypasses template) |
 | `description` | `description: 'Page description'` | `<meta name="description" content="..." />` |
 | `applicationName` | `applicationName: 'My App'` | `<meta name="application-name" content="..." />` |
-| `authors` | `authors: [{ name: 'Jane', url: 'https://...' }]` | `<meta name="author" content="Jane" />` |
+| `authors` | `authors: { name: 'Jane', url: '/jane' }` or an array | `<link rel="author" href="..." />` and `<meta name="author" content="Jane" />` |
 | `generator` | `generator: 'Astro'` | `<meta name="generator" content="Astro" />` |
 | `keywords` | `keywords: ['astro', 'seo']` | `<meta name="keywords" content="astro, seo" />` |
 | `referrer` | `referrer: 'origin-when-cross-origin'` | `<meta name="referrer" content="..." />` |
-| `creator` | `creator: 'Lucky Media'` | `<meta name="author" content="Lucky Media" />` |
+| `creator` | `creator: 'Lucky Media'` | `<meta name="creator" content="Lucky Media" />` |
 | `publisher` | `publisher: 'Lucky Media'` | `<meta name="publisher" content="Lucky Media" />` |
 | `category` | `category: 'technology'` | `<meta name="category" content="technology" />` |
+| `classification` | `classification: 'business'` | `<meta name="classification" content="business" />` |
+| `abstract` | `abstract: 'Short summary'` | `<meta name="abstract" content="..." />` |
+| `archives` | `archives: '/archive'` | `<link rel="archives" href="..." />` |
+| `assets` | `assets: '/assets'` | `<link rel="assets" href="..." />` |
+| `bookmarks` | `bookmarks: '/bookmarks'` | `<link rel="bookmarks" href="..." />` |
+| `pagination` | `pagination: { previous: '/p/1', next: '/p/3' }` | `<link rel="prev" ... />`, `<link rel="next" ... />` |
+| `viewport` | `viewport: { width: 'device-width', initialScale: 1 }` | `<meta name="viewport" content="width=device-width, initial-scale=1" />` |
+| `themeColor` | `themeColor: '#fff'` or `[{ color, media }]` | `<meta name="theme-color" content="#fff" />` |
+| `colorScheme` | `colorScheme: 'light dark'` | `<meta name="color-scheme" content="light dark" />` |
+| `appleWebApp` | `appleWebApp: { title: 'App' }` or `true` | `mobile-web-app-capable`, `apple-mobile-web-app-*` tags |
+| `formatDetection` | `formatDetection: { telephone: false }` | `<meta name="format-detection" content="telephone=no" />` |
+| `itunes` | `itunes: { appId: '123' }` | `<meta name="apple-itunes-app" content="app-id=123" />` |
+| `appLinks` | `appLinks: { ios: { url: 'app://x' } }` | `<meta property="al:ios:url" content="app://x" />` |
+| `facebook` | `facebook: { appId: '123' }` | `<meta property="fb:app_id" content="123" />` |
+| `pinterest` | `pinterest: { richPin: true }` | `<meta property="pinterest-rich-pin" content="true" />` |
 | `metadataBase` | `metadataBase: new URL('https://example.com')` | Used to resolve relative URLs |
 
 ### Robots
@@ -691,6 +913,8 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 | `robots.index` | `robots: { index: true }` | `<meta name="robots" content="index" />` |
 | `robots.follow` | `robots: { follow: false }` | `<meta name="robots" content="nofollow" />` |
 | `robots.nocache` | `robots: { nocache: true }` | `<meta name="robots" content="nocache" />` |
+| `robots['max-snippet']` | `robots: { 'max-snippet': -1 }` | `<meta name="robots" content="max-snippet:-1" />` |
+| `robots.googleBot` | `robots: { googleBot: { index: false } }` | `<meta name="googlebot" content="noindex" />` |
 
 ### Alternates
 
@@ -698,6 +922,8 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 |---|---|---|
 | `alternates.canonical` | `alternates: { canonical: '/page' }` | `<link rel="canonical" href="..." />` |
 | `alternates.languages` | `alternates: { languages: { 'en-US': '/en' } }` | `<link rel="alternate" hreflang="en-US" href="/en" />` |
+| `alternates.media` | `alternates: { media: { 'only screen': '/m' } }` | `<link rel="alternate" media="only screen" href="..." />` |
+| `alternates.types` | `alternates: { types: { 'application/rss+xml': '/rss.xml' } }` | `<link rel="alternate" type="application/rss+xml" href="..." />` |
 
 ### Icons
 
@@ -707,6 +933,7 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 | `icons.icon` (object) | `icons: { icon: { url: '/favicon.png', sizes: '32x32', type: 'image/png' } }` | `<link rel="icon" href="..." type="image/png" sizes="32x32" />` |
 | `icons.apple` | `icons: { apple: '/apple-touch-icon.png' }` | `<link rel="apple-touch-icon" href="..." />` |
 | `icons.shortcut` | `icons: { shortcut: '/shortcut.ico' }` | `<link rel="shortcut icon" href="..." />` |
+| `icons.other` | `icons: { other: { rel: 'mask-icon', url: '/m.svg', color: '#000' } }` | `<link rel="mask-icon" href="..." color="#000" />` |
 | `manifest` | `manifest: '/site.webmanifest'` | `<link rel="manifest" href="..." />` |
 
 ### OpenGraph
@@ -719,11 +946,15 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 | `openGraph.url` | `openGraph: { url: 'https://...' }` | `<meta property="og:url" content="..." />` |
 | `openGraph.siteName` | `openGraph: { siteName: 'My Site' }` | `<meta property="og:site_name" content="My Site" />` |
 | `openGraph.locale` | `openGraph: { locale: 'en_US' }` | `<meta property="og:locale" content="en_US" />` |
+| `openGraph.alternateLocale` | `openGraph: { alternateLocale: ['fr_FR'] }` | `<meta property="og:locale:alternate" content="fr_FR" />` |
 | `openGraph.images[].url` | `openGraph: { images: [{ url: '/og.png' }] }` | `<meta property="og:image" content="..." />` |
 | `openGraph.images[].alt` | `openGraph: { images: [{ url: '...', alt: 'Alt' }] }` | `<meta property="og:image:alt" content="Alt" />` |
 | `openGraph.images[].width` | `openGraph: { images: [{ url: '...', width: 1200 }] }` | `<meta property="og:image:width" content="1200" />` |
 | `openGraph.images[].height` | `openGraph: { images: [{ url: '...', height: 630 }] }` | `<meta property="og:image:height" content="630" />` |
 | `openGraph.images[].type` | `openGraph: { images: [{ url: '...', type: 'image/png' }] }` | `<meta property="og:image:type" content="image/png" />` |
+| `openGraph.images[].secureUrl` | `openGraph: { images: [{ url: '...', secureUrl: 'https://...' }] }` | `<meta property="og:image:secure_url" content="..." />` |
+| `openGraph.videos` | `openGraph: { videos: '/v.mp4' }` | `<meta property="og:video" content="..." />` |
+| `openGraph.audio` | `openGraph: { audio: '/a.mp3' }` | `<meta property="og:audio" content="..." />` |
 
 ### Twitter
 
@@ -731,11 +962,15 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 |---|---|---|
 | `twitter.card` | `twitter: { card: 'summary_large_image' }` | `<meta name="twitter:card" content="summary_large_image" />` |
 | `twitter.site` | `twitter: { site: '@mysite' }` | `<meta name="twitter:site" content="@mysite" />` |
+| `twitter.siteId` | `twitter: { siteId: '1467726470533754880' }` | `<meta name="twitter:site:id" content="..." />` |
+| `twitter.creatorId` | `twitter: { creatorId: '1467726470533754880' }` | `<meta name="twitter:creator:id" content="..." />` |
 | `twitter.creator` | `twitter: { creator: '@handle' }` | `<meta name="twitter:creator" content="@handle" />` |
 | `twitter.title` | `twitter: { title: 'Title' }` | `<meta name="twitter:title" content="Title" />` |
 | `twitter.description` | `twitter: { description: '...' }` | `<meta name="twitter:description" content="..." />` |
 | `twitter.images[].url` | `twitter: { images: [{ url: '/og.png' }] }` | `<meta name="twitter:image" content="..." />` |
 | `twitter.images[].alt` | `twitter: { images: [{ url: '...', alt: 'Alt' }] }` | `<meta name="twitter:image:alt" content="Alt" />` |
+| `twitter.players` | `twitter: { card: 'player', players: { ... } }` | `twitter:player`, `twitter:player:stream`, `:width`, `:height` |
+| `twitter.app` | `twitter: { card: 'app', app: { ... } }` | `twitter:app:name:*`, `twitter:app:id:*`, `twitter:app:url:*` |
 
 ### Verification
 
@@ -743,13 +978,16 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 |---|---|---|
 | `verification.google` | `verification: { google: 'abc123' }` | `<meta name="google-site-verification" content="abc123" />` |
 | `verification.yandex` | `verification: { yandex: 'def456' }` | `<meta name="yandex-verification" content="def456" />` |
+| `verification.yahoo` | `verification: { yahoo: 'ghi789' }` | `<meta name="y_key" content="ghi789" />` |
+| `verification.me` | `verification: { me: 'jkl012' }` | `<meta name="me" content="jkl012" />` |
+| `verification.other` | `verification: { other: { 'msvalidate.01': 'x' } }` | `<meta name="msvalidate.01" content="x" />` |
 
 ### Other / custom meta tags
 
 | Field | Example | HTML output |
 |---|---|---|
-| `other` | `other: { 'theme-color': '#fff' }` | `<meta name="theme-color" content="#fff" />` |
-| `other` (array) | `other: { 'theme-color': ['#fff', '#000'] }` | Multiple `<meta name="theme-color" .../>` tags |
+| `other` | `other: { 'x-custom': 'value' }` | `<meta name="x-custom" content="value" />` |
+| `other` (array) | `other: { 'x-custom': ['a', 'b'] }` | Multiple `<meta name="x-custom" .../>` tags |
 
 ---
 
@@ -763,10 +1001,6 @@ For SSG builds where defaults never change at runtime, use [Pattern 8](#pattern-
 
 `resolveMetadata()` is a synchronous function. All metadata, including any runtime CMS defaults, must be resolved in the Astro frontmatter before the component renders. Use `await` in the frontmatter before calling `resolveMetadata()` or `generateMetadata()`.
 
-### No `robots.googleBot` rendering
+### Custom rendering
 
-The `RobotsDirective` type includes a `googleBot` nested directive (mirroring Next.js), but the `<SEO />` component currently renders only the top-level `<meta name="robots">` tag.
-
-### Unrendered fields
-
-`verification.yahoo`, `twitter.siteId`, and `twitter.creatorId` are accepted by the `Metadata` type but are not currently rendered by the `<SEO />` component. They are available in the resolved metadata object if you need to render them manually.
+`<SEO />` calls `createTags()` from `@lucky-media/astro-seo/internal/tags`. That function returns a plain list of `{ tag, attrs }` objects. You can call it yourself if you need to render the tags in a different way.
