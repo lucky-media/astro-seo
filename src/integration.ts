@@ -36,18 +36,25 @@ export function defaultSeo(siteConfig: SiteConfig): AstroIntegration {
             plugins: [
               {
                 name: '@lucky-media/astro-seo-virtual',
-                resolveId(id: string) {
-                  if (id === virtualModuleId) return resolvedId
+                // Hook filters let Vite 8 (Rolldown) skip these hooks for other ids.
+                // The checks inside each handler keep older Vite versions working.
+                resolveId: {
+                  filter: { id: /^virtual:@lucky-media\/astro-seo$/ },
+                  handler(id: string) {
+                    if (id === virtualModuleId) return resolvedId
+                  },
                 },
-                async load(id: string) {
-                  if (id !== resolvedId) return
+                load: {
+                  filter: { id: /^\0virtual:@lucky-media\/astro-seo$/ },
+                  async handler(id: string) {
+                    if (id !== resolvedId) return
 
-                  if (!cachedModuleCode) {
-                    const config =
-                      typeof siteConfig === 'function' ? await siteConfig() : siteConfig
-                    const serialized = serializeConfig(config)
+                    if (!cachedModuleCode) {
+                      const config =
+                        typeof siteConfig === 'function' ? await siteConfig() : siteConfig
+                      const serialized = serializeConfig(config)
 
-                    cachedModuleCode = `
+                      cachedModuleCode = `
 import { createDefaultMetadata } from '@lucky-media/astro-seo/internal/defaults'
 import { mergeMetadata, applyTwitterOgFallback } from '@lucky-media/astro-seo/internal/merge'
 
@@ -64,9 +71,10 @@ export function resolveMetadata(pageMetadata, runtimeDefaults) {
   return applyTwitterOgFallback(resolved)
 }
 `
-                  }
+                    }
 
-                  return cachedModuleCode
+                    return cachedModuleCode
+                  },
                 },
               },
             ],
