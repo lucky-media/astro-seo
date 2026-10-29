@@ -9,7 +9,8 @@ Guidelines for working on this codebase with Claude or any AI assistant.
 Key concepts:
 - `defaultSeo()` — Astro integration configured in `astro.config.mjs`, embeds site defaults into a Vite virtual module at build time
 - `virtual:lucky-astro-seo` — the virtual module that exposes `generateMetadata()` and `resolveMetadata()` to pages
-- `<SEO />` — Astro component that renders all `<meta>` and `<link>` tags from a `ResolvedMetadata` object
+- `<SEO />` — Astro component that renders the tags that `createTags()` (`src/tags.ts`) builds from a `ResolvedMetadata` object
+- `postProcessMetadata()` — runs once on the final metadata; fills empty Twitter fields from OpenGraph, and empty OpenGraph and Twitter titles and descriptions from the document
 - `mergeMetadata()` — the core inheritance engine (`src/merge.ts`) that merges parent defaults with page overrides
 
 ## Structure
@@ -18,14 +19,16 @@ Key concepts:
 src/
   types.ts              # All TypeScript types (Metadata, ResolvedMetadata, etc.)
   integration.ts        # defaultSeo() Astro integration + Vite virtual module
-  merge.ts              # mergeMetadata() — core inheritance engine
+  merge.ts              # mergeMetadata() — core inheritance engine, postProcessMetadata()
+  tags.ts               # createTags() — builds the tag list that SEO.astro renders
+  utils.ts              # toArray(), isUrlLike(), stripUndefined()
   defaults.ts           # createDefaultMetadata() — all-null baseline
   resolve-*.ts          # Individual field resolvers (title, url, robots, etc.)
   index.ts              # Public package entry point
   virtual.d.ts          # Type declarations for virtual:lucky-astro-seo
   components/
-    SEO.astro           # <SEO /> component
-test/                   # Vitest test files, one per resolver
+    SEO.astro           # <SEO /> component (loops over createTags())
+test/                   # Vitest test files, one per resolver, plus tags.test.ts for output
 examples/
   with-lucky-astro-seo/ # Working Astro demo app
 ```
@@ -59,6 +62,8 @@ Tests live in `test/`, one file per resolver. We use **Vitest 2**.
 - Run all tests: `npm test`
 - Watch mode: `npm run test:watch`
 
+Vitest 2 cannot load `.astro` files with Astro 7, so test the rendered output through `createTags()`, not through `SEO.astro`.
+
 **Bug fix rule: write a failing test that reproduces the bug first, confirm it fails, then apply the fix and confirm the test passes.** Do not fix a bug without a test.
 
 ## Adding a New Field
@@ -66,7 +71,7 @@ Tests live in `test/`, one file per resolver. We use **Vitest 2**.
 1. Add the input type to `Metadata` and the resolved type to `ResolvedMetadata` in `src/types.ts`
 2. Add a resolver in `src/resolve-<field>.ts` with a corresponding test file
 3. Wire it into `mergeMetadata()` in `src/merge.ts`
-4. Render it in `src/components/SEO.astro`
+4. Render it in `createTags()` in `src/tags.ts`, with a test in `test/tags.test.ts`
 5. Document it in `README.md` (field reference table + relevant pattern section)
 
 ## Virtual Module
@@ -75,4 +80,4 @@ The virtual module is implemented with a standard Vite plugin (`resolveId` + `lo
 
 ## Publishing
 
-The `files` array in `package.json` controls what gets published: `dist/`, `src/components/`, and `src/virtual.d.ts`. The `dist/` directory is gitignored — always run `npm run build` before publishing.
+The `files` array in `package.json` controls what gets published: `dist/` and `src/components/`. `SEO.astro` imports `@lucky-media/astro-seo/internal/tags` from `dist/`. The `dist/` directory is gitignored — always run `npm run build` before publishing.

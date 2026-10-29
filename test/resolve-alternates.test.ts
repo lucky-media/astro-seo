@@ -25,4 +25,30 @@ describe('resolveAlternates', () => {
     expect(result?.languages?.['en-US']).toBe('https://example.com/en')
     expect(result?.languages?.['fr-FR']).toBe('https://example.com/fr')
   })
+  it('resolves media alternate URLs', () => {
+    const result = resolveAlternates(
+      { media: { 'only screen and (max-width: 600px)': '/m' } },
+      base
+    )
+    expect(result?.media?.['only screen and (max-width: 600px)']).toBe('https://example.com/m')
+  })
+  it('resolves type alternate URLs', () => {
+    const result = resolveAlternates({ types: { 'application/rss+xml': '/rss.xml' } }, base)
+    expect(result?.types?.['application/rss+xml']).toBe('https://example.com/rss.xml')
+  })
+  it('resolves alternate descriptors with a title', () => {
+    const result = resolveAlternates(
+      { types: { 'application/rss+xml': [{ url: '/rss.xml', title: 'Blog RSS' }] } },
+      base
+    )
+    expect(result?.types?.['application/rss+xml']).toEqual([
+      { url: 'https://example.com/rss.xml', title: 'Blog RSS' },
+    ])
+  })
+  it('resolves a canonical descriptor', () => {
+    expect(resolveAlternates({ canonical: { url: '/a', title: 'A' } }, base)?.canonical).toEqual({
+      url: 'https://example.com/a',
+      title: 'A',
+    })
+  })
 })

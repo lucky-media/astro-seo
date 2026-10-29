@@ -8,7 +8,7 @@ async function getVirtualModuleCode(config: Parameters<typeof defaultSeo>[0]): P
   let loadFn: ((id: string) => unknown) | undefined
   ;(setupHook as Function)({
     updateConfig: vi.fn<() => void>(({ vite }: any) => {
-      loadFn = vite.plugins[0].load
+      loadFn = vite.plugins[0].load.handler
     }),
   })
 
@@ -33,6 +33,25 @@ describe('defaultSeo integration', () => {
     expect(arg.content).toContain("declare module 'virtual:@lucky-media/astro-seo'")
     expect(arg.content).toContain('generateMetadata')
     expect(arg.content).toContain('resolveMetadata')
+  })
+})
+
+describe('defaultSeo virtual module hook filters', () => {
+  it('declares resolveId and load filters that match only the virtual module ids', () => {
+    let plugin: any
+    ;(defaultSeo({}).hooks['astro:config:setup'] as Function)({
+      updateConfig: vi.fn<() => void>(({ vite }: any) => {
+        plugin = vite.plugins[0]
+      }),
+    })
+
+    const resolveFilter: RegExp = plugin.resolveId.filter.id
+    const loadFilter: RegExp = plugin.load.filter.id
+
+    expect(resolveFilter.test('virtual:@lucky-media/astro-seo')).toBe(true)
+    expect(resolveFilter.test('virtual:@lucky-media/astro-seo-other')).toBe(false)
+    expect(loadFilter.test('\0virtual:@lucky-media/astro-seo')).toBe(true)
+    expect(loadFilter.test('virtual:@lucky-media/astro-seo')).toBe(false)
   })
 })
 
@@ -61,7 +80,7 @@ describe('defaultSeo with function config', () => {
     let loadFn: ((id: string) => unknown) | undefined
     ;(setupHook as Function)({
       updateConfig: vi.fn<() => void>(({ vite }: any) => {
-        loadFn = vite.plugins[0].load
+        loadFn = vite.plugins[0].load.handler
       }),
     })
 

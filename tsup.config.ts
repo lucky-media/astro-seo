@@ -5,6 +5,7 @@ export default defineConfig({
     'src/index.ts',
     'src/defaults.ts',
     'src/merge.ts',
+    'src/tags.ts',
   ],
   format: ['esm'],
   dts: true,

@@ -20,4 +20,21 @@ describe('resolveIcons', () => {
     const result = resolveIcons({ apple: '/apple-touch-icon.png' }, base)
     expect((result!.apple as any[])[0].url).toBe('https://example.com/apple-touch-icon.png')
   })
+  it('treats a top-level string as icons.icon', () => {
+    expect(resolveIcons('/favicon.ico', base)).toEqual({
+      icon: [{ url: 'https://example.com/favicon.ico' }],
+    })
+  })
+  it('treats a top-level array as icons.icon', () => {
+    expect(resolveIcons([{ url: '/a.png', media: '(prefers-color-scheme: dark)' }], base)).toEqual({
+      icon: [{ url: 'https://example.com/a.png', media: '(prefers-color-scheme: dark)' }],
+    })
+  })
+  it('resolves icons.other', () => {
+    expect(
+      resolveIcons({ other: { rel: 'mask-icon', url: '/m.svg', color: '#000' } }, base)
+    ).toEqual({
+      other: [{ rel: 'mask-icon', url: 'https://example.com/m.svg', color: '#000' }],
+    })
+  })
 })

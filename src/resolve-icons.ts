@@ -1,25 +1,30 @@
-import type { Icons, Icon } from './types.ts'
+import type { Icons, Icon, Metadata, ResolvedIcon, ResolvedIcons } from './types.ts'
 import { resolveUrl } from './resolve-url.ts'
+import { toArray, isUrlLike } from './utils.ts'
 
 function normalizeIcons(
   icon: string | URL | Icon | (string | URL | Icon)[],
   base: URL | null
-): Icon[] {
-  return (Array.isArray(icon) ? icon : [icon]).map((i) => {
-    if (typeof i === 'string' || i instanceof URL) return { url: resolveUrl(i, base) ?? String(i) }
+): ResolvedIcon[] {
+  return toArray(icon).map((i) => {
+    if (isUrlLike(i)) return { url: resolveUrl(i, base) ?? String(i) }
     return { ...i, url: resolveUrl(i.url, base) ?? String(i.url) }
   })
 }
 
 export function resolveIcons(
-  icons: Icons | null | undefined,
+  icons: Metadata['icons'],
   metadataBase: URL | null
-): Icons | null {
+): ResolvedIcons | null {
   if (icons == null) return null
-  return {
-    icon: icons.icon != null ? normalizeIcons(icons.icon, metadataBase) : undefined,
-    apple: icons.apple != null ? normalizeIcons(icons.apple, metadataBase) : undefined,
-    shortcut: icons.shortcut != null ? normalizeIcons(icons.shortcut, metadataBase) : undefined,
-    other: icons.other != null ? normalizeIcons(icons.other, metadataBase) : undefined,
+  if (isUrlLike(icons) || Array.isArray(icons)) {
+    return { icon: normalizeIcons(icons, metadataBase) }
   }
+
+  const resolved: ResolvedIcons = {}
+  for (const key of ['icon', 'apple', 'shortcut', 'other'] as const satisfies (keyof Icons)[]) {
+    const value = icons[key]
+    if (value != null) resolved[key] = normalizeIcons(value, metadataBase)
+  }
+  return resolved
 }

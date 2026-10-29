@@ -18,6 +18,21 @@ describe('resolveTwitter', () => {
     const images = Array.isArray(result?.images) ? result.images : [result?.images]
     expect(images[0]?.url).toBe('https://example.com/img.png')
   })
+  it('accepts a string image', () => {
+    expect(resolveTwitter({ images: '/tw.png' }, base)?.images).toEqual([
+      { url: 'https://example.com/tw.png' },
+    ])
+  })
+  it('accepts a URL image', () => {
+    expect(resolveTwitter({ images: new URL('https://cdn.com/t.png') }, base)?.images).toEqual([
+      { url: 'https://cdn.com/t.png' },
+    ])
+  })
+  it('resolves a template title to a string', () => {
+    expect(resolveTwitter({ title: { default: 'Home', template: '%s | X' } }, base)?.title).toBe(
+      'Home'
+    )
+  })
   it('preserves explicit card type', () => {
     expect(resolveTwitter({ card: 'player' }, base)?.card).toBe('player')
   })

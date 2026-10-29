@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveRobots } from '../src/resolve-robots.ts'
+import { resolveRobots, resolveGoogleBot } from '../src/resolve-robots.ts'
 
 describe('resolveRobots', () => {
   it('returns null for null input', () => {
@@ -17,6 +17,38 @@ describe('resolveRobots', () => {
   it('handles nocache flag', () => {
     expect(resolveRobots({ index: true, follow: false, nocache: true })).toBe(
       'index, nofollow, nocache'
+    )
+  })
+  it('converts the extended robots directives', () => {
+    expect(
+      resolveRobots({
+        index: true,
+        noarchive: true,
+        nosnippet: false,
+        'max-snippet': -1,
+        'max-image-preview': 'large',
+        'max-video-preview': -1,
+        unavailable_after: '2026-12-31',
+      })
+    ).toBe(
+      'index, noarchive, unavailable_after:2026-12-31, max-video-preview:-1, max-image-preview:large, max-snippet:-1'
+    )
+  })
+})
+
+describe('resolveGoogleBot', () => {
+  it('returns null when robots is a string', () => {
+    expect(resolveGoogleBot('noindex')).toBeNull()
+  })
+  it('returns null when googleBot is not set', () => {
+    expect(resolveGoogleBot({ index: true })).toBeNull()
+  })
+  it('passes a googleBot string through', () => {
+    expect(resolveGoogleBot({ googleBot: 'nosnippet' })).toBe('nosnippet')
+  })
+  it('converts a googleBot directive object', () => {
+    expect(resolveGoogleBot({ googleBot: { index: true, 'max-snippet': 50 } })).toBe(
+      'index, max-snippet:50'
     )
   })
 })
